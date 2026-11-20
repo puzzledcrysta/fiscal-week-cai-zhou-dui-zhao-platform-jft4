@@ -1,6 +1,6 @@
 from app.errors import DataError
 from app.evidence import finding
-from app.settings import KEY, FIELDS
+from app.settings import KEY, FIELDS, PROMO_FIELDS
 from app.modules.domain.values import whole, instant
 from .schema import mapping, REQUIRED, MISSING
 
@@ -24,7 +24,9 @@ def normalize(source):
                 issue['revision'] = revision
             rejected.append(issue)
             continue
+        fields = {field: values[field] for field in FIELDS}
+        fields.update({field: values[field] for field in PROMO_FIELDS if field in values})
         passed.append({'key':key,'revision':revision,'time':changed,'line':record['line'],
-                       'raw':record['raw'],'fields':{field:values[field] for field in FIELDS},
+                       'raw':record['raw'],'fields':fields,
                        'note':values.get('原始备注','')})
     return passed, rejected

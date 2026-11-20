@@ -15,10 +15,10 @@ def fetch(run_id):
         return lookup(db,run_id)
 
 
-def persist(run_id,source,book,result,created):
+def persist(run_id,source,book,result,created,promotions=None):
     with connection() as db:
-        db.execute('INSERT OR IGNORE INTO runs VALUES (?,?,?,?,?)',
-                   (run_id,source,book,json.dumps(result,ensure_ascii=False),created))
+        db.execute('INSERT OR IGNORE INTO runs VALUES (?,?,?,?,?,?)',
+                   (run_id,source,book,json.dumps(result,ensure_ascii=False),created,promotions))
         return lookup(db,run_id)
 
 

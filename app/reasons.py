@@ -12,3 +12,10 @@ REASONS = {
 }
 
 REASONS.update({'FISCAL_FORMAT': '日销售格式', 'FISCAL_SPAN': '销售日越界', 'FISCAL_CONFLICT': '销售记录冲突', 'FISCAL_BOUNDARY': '财年边界不符', 'FISCAL_NO_PAIR': '无可比营业日', 'DATE': '日期格式无效', 'REV_BLOCKED': '较新来源尚未采信'})
+
+REASONS.update({'PROMO_FORMAT': '促销日期格式', 'PROMO_SPAN': '促销日越界', 'PROMO_NO_PAIR': '促销无可比日',
+                'PROMO_SHORT': '促销落单：一边少办', 'PROMO_NO_DATA': '促销落单：当天无日销',
+                'PROMO_CLOSED': '促销落单：当天停业', 'PROMO_PAIR': '促销落单：对面不可比',
+                'PROMO_LEAP': '促销落单：第53周单列', 'PROMO_HEADER': '促销表表头无效',
+                'PROMO_WIDTH': '促销表列数不符', 'PROMO_BOOK_CONFLICT': '促销表含重复业务键',
+                'NO_RECORD': '来源没有此业务键'})

@@ -8,6 +8,7 @@ TITLE = '财周对照台'
 SLUG = 'fiscal-week'
 KEY = '门店财周单'
 FIELDS = ('上年期首', '上年周数', '本年期首', '本年周数', '上年日销售', '本年日销售')
+PROMO_FIELDS = ('上年促销日', '本年促销日')
 ROLE = '连锁零售经营分析员'
 UNIT = '元'
 RULE_VERSION = 'fiscal-week-1.0'

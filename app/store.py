@@ -6,7 +6,7 @@ from app import settings
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS runs (
   id TEXT PRIMARY KEY, source BLOB NOT NULL, book BLOB NOT NULL,
-  result TEXT NOT NULL, created TEXT NOT NULL
+  result TEXT NOT NULL, created TEXT NOT NULL, promotion BLOB
 );
 CREATE TABLE IF NOT EXISTS reviews (
   run_id TEXT NOT NULL REFERENCES runs(id), version INTEGER NOT NULL,
@@ -14,6 +14,13 @@ CREATE TABLE IF NOT EXISTS reviews (
   PRIMARY KEY(run_id,version)
 );
 """
+
+
+def upgrade(db):
+    """旧批次库补上促销日期列；已有记录保持不变，重跑仍按原指纹复用。"""
+    columns = {row['name'] for row in db.execute('PRAGMA table_info(runs)')}
+    if 'promotion' not in columns:
+        db.execute('ALTER TABLE runs ADD COLUMN promotion BLOB')
 
 
 @contextmanager
@@ -25,6 +32,7 @@ def connection():
     try:
         db.execute('PRAGMA foreign_keys = ON')
         db.executescript(SCHEMA)
+        upgrade(db)
         with db:
             yield db
     finally:

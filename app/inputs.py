@@ -31,9 +31,30 @@ class Source(BaseModel):
     data: CsvText | None = None
     data_base64: EncodedCsv | None = None
     demo: Literal['shift'] = 'shift'
+    promotion: CsvText | None = None
+    promotion_base64: EncodedCsv | None = None
 
     def raw(self):
         return input_bytes(self.data, self.data_base64, SAMPLE_ROOT/'shift.csv')
+
+    def promotions(self):
+        """两年同场促销日期表；未提交时返回 None，本次按原财周规则对齐。"""
+        if self.promotion is not None and self.promotion_base64 is not None:
+            raise DataError('CONTRACT', '促销日期只能提交文本或原始文件其中之一')
+        if self.promotion is not None:
+            raw = self.promotion.encode()
+        elif self.promotion_base64 is not None:
+            try:
+                raw = b64decode(self.promotion_base64, validate=True)
+            except (ValueError, Base64Error) as error:
+                raise DataError('ENCODING', '促销日期文件编码无效') from error
+        else:
+            return None
+        if not raw.strip():
+            return None
+        if len(raw) > MAX_BYTES:
+            raise DataError('LIMIT', '单个文件不能超过 128 KiB', 413)
+        return raw
 
 
 class Paired(Source):
@@ -51,7 +72,7 @@ class Review(BaseModel):
 
 
 def read_sample(name):
-    choices = {'shift':'shift.csv','external':'external.csv'}
+    choices = {'shift':'shift.csv','external':'external.csv','promotion':'promotion.csv'}
     if name not in choices:
         raise DataError('DEMO_UNKNOWN','没有此样例',404)
     return SAMPLE_ROOT.joinpath(choices[name]).read_bytes()

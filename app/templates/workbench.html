@@ -33,9 +33,11 @@
       <form id="source" class="panel__body">
         <div class="actions"><button type="submit" class="btn btn--primary">运行可比财周</button>
         <button type="button" id="sample" class="btn">载入样例</button></div>
-        <details><summary>导入来源与外部账</summary>
+        <details><summary>导入来源、促销日期与外部账</summary>
           <label>来源文件 <input id="source-file" type="file" accept=".csv,text/csv"></label>
           <textarea id="source-csv" aria-label="原始记录 CSV" rows="4"></textarea>
+          <label>促销日期表 <input id="promotion-file" type="file" accept=".csv,text/csv"></label>
+          <textarea id="promotion-csv" aria-label="两年同场促销日期 CSV" rows="3" placeholder="门店财周单,上年促销日,本年促销日"></textarea>
           <label>外部账 <input id="book-file" type="file" accept=".csv,text/csv"></label>
           <textarea id="book-csv" aria-label="外部账 CSV" rows="4"></textarea>
         </details>
@@ -46,7 +48,8 @@
     <section class="panel results" aria-labelledby="phase">
       <div class="panel__head"><h2 id="phase">可比财周</h2><span class="num" id="run-id"></span></div>
       <div id="tools" class="filters" hidden><label>筛选 <input id="filter" type="search" placeholder="门店财周单 / 原因" maxlength="80"></label>
-        <label id="only-differences" hidden><input id="differences" type="checkbox"> 只看差异</label><output id="shown"></output></div>
+        <label id="only-differences" hidden><input id="differences" type="checkbox"> 只看落单/差异</label><output id="shown"></output></div>
+      <p class="filters" id="promotion-check" hidden></p>
       <div class="scroll" id="grid-data"><p class="empty">运行本班样例</p></div>
       <form id="review" class="panel__body" hidden>
         <label>复核意见 <textarea id="review-note" maxlength="500" rows="2"></textarea></label>

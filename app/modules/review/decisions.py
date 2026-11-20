@@ -21,7 +21,9 @@ def decide(run_id,version,decision,note):
         current = db.execute('SELECT COALESCE(MAX(version),0) FROM reviews WHERE run_id=?',(run_id,)).fetchone()[0]
         if current != version:
             raise DataError('STALE','复核版本已过期，请刷新',409)
-        if (run['book']['mismatched'] or run['quarantine'] or decision=='退回') and not note:
+        promotion = run.get('promotion') or {}
+        if (run['book']['mismatched'] or run['quarantine'] or run.get('promotion_unpaired')
+                or promotion.get('orphaned') or decision=='退回') and not note:
             raise DataError('REVIEW_NOTE','有差异时须填写复核意见')
         record = {'version':current+1,'decision':decision,'note':note,'changed':datetime.now(timezone.utc).isoformat()}
         db.execute('INSERT INTO reviews VALUES (?,?,?,?,?)',(run_id,*record.values()))

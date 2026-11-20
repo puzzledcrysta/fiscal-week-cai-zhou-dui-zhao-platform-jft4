@@ -8,7 +8,8 @@ router = APIRouter()
 
 @router.post('/api/runs')
 def create(source: Paired):
-    return run(source.raw(),source.ledger())
+    return run(source.raw(),source.ledger(),source.promotions())
+
 
 @router.get('/api/runs')
 def list_runs():
@@ -27,4 +28,6 @@ def again(run_id: str):
 def source_inputs(run_id: str):
     record = fetch(run_id)
     return {'data_base64': b64encode(record['source']).decode(),
-            'book_base64': b64encode(record['book']).decode()}
+            'book_base64': b64encode(record['book']).decode(),
+            'promotion_base64': (None if record['promotion'] is None
+                                 else b64encode(record['promotion']).decode())}

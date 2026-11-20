@@ -24,7 +24,10 @@ function filterTable() {
   const query = filter.value.trim().toLocaleLowerCase();
   const selected = rows.filter(row => {
     if (stage === 'reconcile' && differences.checked && row.code === 'MATCH') return false;
-    return !query || [row.key,row.id,row.line,row.code,settings.reasons[row.code],row.detail,row.note,row.kind]
+    if (stage === 'domain' && differences.checked && !(row.promotion && row.promotion.orphans.length)) return false;
+    const orphans = row.promotion ? row.promotion.orphans.map(item => item.code) : [];
+    return !query || [row.key,row.id,row.line,row.code,settings.reasons[row.code],row.detail,row.note,row.kind,
+                      row.alignment, ...orphans, ...orphans.map(code => settings.reasons[code])]
       .some(value => String(value ?? '').toLocaleLowerCase().includes(query));
   });
   byId('shown').textContent = `${selected.length} / ${rows.length}`;
@@ -61,6 +64,22 @@ function showEvidence(row) {
     line.append(el('strong', item.unit ? `${item.value} ${item.unit}` : item.value, 'measure'));
     content.append(line);
   }
+  if (row.promotion) {
+    for (const pair of row.promotion.pairs) {
+      const line = el('li');
+      line.append(el('span', `第${pair.order}天 ${pair.previous_date} → ${pair.current_date}` +
+        (pair.week_shift ? ` 挪周${pair.week_shift > 0 ? '+' : ''}${pair.week_shift}` : '') +
+        (pair.same_weekday ? ' 同星期' : ' 不同星期')));
+      line.append(el('strong', `${pair.delta} 元`, 'measure'));
+      content.append(line);
+    }
+    for (const item of row.promotion.orphans) {
+      const line = el('li');
+      line.append(el('span', `第${item.order}天 ${item.side} ${item.date} · ${settings.reasons[item.code] || item.code}`));
+      line.append(el('strong', '不计', 'measure'));
+      content.append(line);
+    }
+  }
   details.replaceChildren(content);
 }
 
@@ -85,7 +104,18 @@ function setRun(report) {
   topExport.href = `/api/export/${id}`;
   const values = {...result.counts, delta: result.book.delta, mismatched: result.book.mismatched};
   for (const cell of document.querySelectorAll('[data-count]')) cell.textContent = values[cell.dataset.count];
-  live.textContent = `批次 ${id.slice(0, 9)} · ${result.balanced ? '记录已对齐' : '记录数不符'}`;
+  const promotion = result.promotion || {};
+  const check = byId('promotion-check');
+  if (promotion.supplied) {
+    const reasons = Object.entries(promotion.reasons || {})
+      .map(([code, count]) => `${settings.reasons[code] || code} ${count}`).join('，');
+    check.textContent = `促销对齐 ${promotion.aligned}/${promotion.supplied} 条 · 可比 ${promotion.paired} 日 · 挪周 ${promotion.moved} 日 · 落单 ${promotion.orphaned} 日` +
+      (reasons ? `（${reasons}）` : '');    check.hidden = false;
+  } else {
+    check.hidden = true;
+  }
+  live.textContent = `批次 ${id.slice(0, 9)} · ${result.balanced ? '记录已对齐' : '记录数不符'}` +
+    (promotion.aligned ? ` · 促销可比 ${promotion.paired} 日，落单 ${promotion.orphaned} 日` : '');
 }
 
 async function render() {
@@ -105,7 +135,11 @@ async function render() {
   try {
     let view, rows;
     if (stage === 'domain') {
-      view = [key, [`可比日差额 · ${settings.unit}`, 'amount', 'num'], line, ['明细依据', inspect]];
+      view = [key, [`可比日差额 · ${settings.unit}`, 'amount', 'num'],
+              ['对齐', row => el('span', row.alignment === 'promotion' ? '促销进度' : '财周', 'state')],
+              ['促销配对/落单', row => row.promotion
+                ? `${row.promotion.paired} / ${row.promotion.orphaned}` : '—'],
+              line, ['明细依据', inspect]];
       rows = result.accepted;
     } else if (stage === 'quality') {
       view = [key, line, ['判定', row => tag(row.code)], ['说明', 'detail'], ['字段', raw]];
@@ -163,7 +197,7 @@ async function render() {
       if (activeView?.stage !== stage) filter.value = '';
       activeView = {stage, columns: view, rows};
       byId('tools').hidden = false;
-      byId('only-differences').hidden = stage !== 'reconcile';
+      byId('only-differences').hidden = stage !== 'reconcile' && stage !== 'domain';
       filterTable();
     }
   } catch (error) {
@@ -176,23 +210,24 @@ window.addEventListener('hashchange', () => {
   render();
 });
 byId('sample').addEventListener('click', async () => {
-  const paths = ['shift', 'external'];
+  const paths = ['shift', 'promotion', 'external'];
   try {
     const responses = await Promise.all(paths.map(name => fetch(`/api/samples/${name}`)));
     if (responses.some(item => !item.ok)) throw Error('样例暂时不可用');
     const files = await Promise.all(responses.map(item => item.arrayBuffer()));
-    for (const [index,name] of ['source','book'].entries()) {
+    for (const [index,name] of ['source','promotion','book'].entries()) {
       const decoded = new TextDecoder('utf-8').decode(files[index]);
       byId(`${name}-csv`).value = decoded;
       uploaded.set(name,{text:byId(`${name}-csv`).value,bytes:files[index]});
     }
     byId('source-file').value = '';
+    byId('promotion-file').value = '';
     byId('book-file').value = '';
     document.querySelector('#source details').open = true;
     notice('样例已载入');
   } catch (error) { notice(error.message, true); }
 });
-for (const name of ['source','book']) {
+for (const name of ['source','promotion','book']) {
   byId(`${name}-file`).addEventListener('change', async event => {
     const file = event.target.files[0];
     if (!file) return;
@@ -211,7 +246,7 @@ for (const name of ['source','book']) {
 byId('source').addEventListener('submit', async event => {
   event.preventDefault();
   const candidate = {};
-  for (const [control,name] of [['source','data'],['book','book']]) {
+  for (const [control,name] of [['source','data'],['promotion','promotion'],['book','book']]) {
     const text = byId(`${control}-csv`).value;
     const original = uploaded.get(control);
     if (original && text === original.text) candidate[`${name}_base64`] = encodeInput(original.bytes);
